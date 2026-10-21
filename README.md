@@ -1,69 +1,89 @@
 # Autonomous Code Review Agent
 
-An incremental portfolio project for learning how to build a code-review assistant.
-The intended first version is a local web app: a user pastes or uploads a small
-Python file, asks for a review, and receives structured findings about possible bugs
-and security issues.
+A portfolio project demonstrating how to build a full-stack code-review assistant.
+A user pastes or uploads a small Python file, submits it for review, and receives
+structured findings about possible bugs and security issues.
 
-## Current status
+## What is implemented
 
-This repository currently contains project documentation only. The application has
-not been implemented, dependencies have not been installed, and no source code is
-executed by the project.
+The first milestone is complete and running:
 
-Read these documents in order:
+- **React + TypeScript + Vite frontend** — paste Python source or upload a `.py`
+  file, submit, and see structured findings with severity badges, line numbers,
+  explanations, and suggested fixes.
+- **FastAPI backend** — validates every request on the server side, enforces the
+  50 KB limit, and returns a stable JSON response.
+- **Deterministic static checker** — nine token-based checks covering `eval`,
+  `exec`, `os.system`, `subprocess.run`, `subprocess.Popen`, `pickle.load`,
+  `pickle.loads`, bare `except:` clauses, and mutable list/dict default arguments.
+- **Structured review findings** — each finding carries severity, title,
+  explanation, 1-based line numbers, a suggested fix, and a confidence score.
+- **Clear mock/demo labelling** — the UI prominently states that findings come from
+  deterministic local rules, not from an AI model.
+- **34 backend tests** — covering schemas, review service, static checks,
+  HTTP endpoints, and error paths.
 
-1. [Requirements](docs/REQUIREMENTS.md) - who the project serves and what it should do.
-2. [Architecture](docs/ARCHITECTURE.md) - proposed stack, components, data flow, and
-   security boundaries.
-3. [Plan](docs/PLAN.md) - small implementation steps and their current status.
-4. [Working instructions](AGENTS.md) - durable rules for future changes.
+The submitted code is analyzed as text only. It is never executed, compiled,
+imported, passed to a shell, or stored.
 
-## Proposed first-version workflow
+## Example review output
 
-1. Start the local React/Vite frontend and FastAPI backend.
-2. Paste Python source code or upload one small Python file.
-3. Submit the review request from the frontend.
-4. The frontend sends the source to FastAPI over a local HTTP request.
-5. FastAPI validates the request, selects either mock/demo mode or the configured AI
-   provider, and returns a validated structured response.
-6. See findings grouped by severity, with a title, relevant line numbers when
-   available, explanation, confidence where justified, and suggested fixes.
-7. See a clear error if the input is too large, malformed, or the selected review
-   mode is unavailable.
+Submit this code:
 
-The submitted code is analyzed as text only. It is never automatically executed,
-compiled, imported, passed to a shell, or imported by the backend.
+```python
+def calculate(expression):
+    return eval(expression)
+```
 
-## Confirmed technology stack
+The application returns a finding like:
 
-- **React**: builds the browser interface from reusable components.
-- **TypeScript**: catches many frontend mistakes before the app runs and documents
-  the shapes of frontend data.
-- **Vite**: provides the frontend development server and production bundling.
-- **Plain CSS**: styles the interface without adding a UI framework.
-- **Python 3.12+**: powers the backend and review orchestration.
-- **FastAPI**: exposes the local HTTP API and serves typed request handlers.
-- **Pydantic**: validates backend requests and review responses.
-- **pytest**: tests backend validation, review orchestration, provider boundaries,
-  and safety behavior.
-- **Git and GitHub**: track changes and host the portfolio repository.
+| Field | Value |
+|---|---|
+| Severity | **high** |
+| Title | Dynamic evaluation with eval |
+| Line | 2 |
+| Explanation | Use of eval(...) can execute input as Python code. |
+| Suggested fix | Avoid eval; parse input as data or use an explicit allowlist. |
+| Confidence | 98% |
 
-The AI provider is intentionally not selected yet. The first working
-frontend-to-backend flow will use mock review results only. Provider selection will
-wait until the AI integration milestone, after reviewing provider costs and data-use
-terms. A small provider interface will allow it to be replaced.
+## What the static checker detects
 
-Each submitted source file is initially limited to **50 KB**. The backend will own
-this configurable limit; the frontend may give earlier feedback but is not a
-security boundary. The first version will not store submitted code or introduce a
-database. Additional static-analysis tools are deferred until the basic application
-works.
+| Pattern | Severity |
+|---|---|
+| `eval(...)` | high |
+| `exec(...)` | high |
+| `os.system(...)` | high |
+| `pickle.load(...)` / `pickle.loads(...)` | high |
+| `subprocess.run(...)` | medium |
+| `subprocess.Popen(...)` | medium |
+| Mutable list or dict default argument | medium |
+| Bare `except:` clause | low |
+
+The checker uses Python's `tokenize` module to inspect source tokens. It will not
+catch aliased imports (`import subprocess as sp`) and it is not a security guarantee.
+Findings are clearly labelled as deterministic heuristics.
 
 ## Local setup
 
-There is no dependency manifest or runnable application yet. Once implementation
-begins, use two terminals from the repository root:
+You need **Node.js 18+** and **Python 3.12+**.
+
+### Start the backend
+
+```text
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate    # macOS / Linux
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload
+```
+
+The API is available at `http://localhost:8000`. The health endpoint is
+`GET /health`.
+
+### Start the frontend
+
+Open a second terminal:
 
 ```text
 cd frontend
@@ -71,32 +91,73 @@ npm install
 npm run dev
 ```
 
+Open `http://localhost:5173` in your browser.
+
+### Run the backend tests
+
 ```text
 cd backend
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+python -m pytest tests/ -v
 ```
 
-These commands describe the planned development workflow; the referenced files and
-commands will be added in later milestones. Do not add secrets to this repository;
-use backend-only environment configuration that is excluded from version control
-once provider integration is implemented.
+## Architecture
+
+```text
+Browser (React + TypeScript + Vite)
+   |
+   | POST /api/reviews  (JSON)
+   v
+FastAPI route  ->  input validation (Pydantic)
+   |
+   v
+ReviewService  ->  MockReviewProvider
+                      |
+                      v
+                  analyze_source()  -- tokenize-based static checks
+                      |
+                      v
+                  list[ReviewFinding]
+   |
+   v
+Validated JSON response  ->  Browser renders findings
+```
+
+A replaceable `ReviewProvider` protocol keeps the static checker and any future AI
+adapter behind a common interface. No code path executes, imports, or compiles
+submitted source.
+
+## Technology stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, TypeScript, Vite, plain CSS |
+| Backend | Python 3.12+, FastAPI, Pydantic, Uvicorn |
+| Static analysis | Python `tokenize` (stdlib only) |
+| Tests | pytest |
+| Version control | Git, GitHub |
 
 ## Safety notes
 
-- Never automatically execute submitted source code.
-- Do not import or compile submitted source code, even for validation.
-- Treat uploads and model output as untrusted data.
-- Keep API keys on the server and out of browser code and logs.
-- Display AI-generated findings as suggestions that require human review.
-- Label mock/demo findings so they cannot be mistaken for AI-generated findings.
-- The initial source-file limit is 50 KB and remains configurable on the backend.
+- Submitted source code is never executed, imported, compiled, or shelled out.
+- The 50 KB source limit is enforced on the backend and is configurable.
+- No submitted code or review results are stored after the request.
+- API keys and backend configuration stay server-side and out of version control.
+- Findings are labelled as deterministic heuristics, not guarantees.
+- The frontend never renders untrusted HTML from findings.
 
-## Current planning status
+## Documentation
 
-The repository contains planning documents only. Application code, package
-installation, and implementation have not started. See
-[docs/PLAN.md](docs/PLAN.md) for the ordered milestones and
-[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) for unresolved decisions.
+- [Requirements](docs/REQUIREMENTS.md) — what the project must and must not do.
+- [Architecture](docs/ARCHITECTURE.md) — component structure, data flow, and security
+  boundaries.
+- [Plan](docs/PLAN.md) — milestone history and remaining work.
+- [Working instructions](AGENTS.md) — durable rules for future contributors and
+  coding agents.
+
+## Limitations and future work
+
+- The checker does not catch aliased imports or every expression form.
+- Findings are heuristics; they do not prove code is safe or bug-free.
+- No AI provider is integrated yet; a local Ollama model is the planned next step.
+- No hosted deployment, authentication, or persistent storage in this version.
+- Additional static-analysis tools are deferred until the AI provider milestone.

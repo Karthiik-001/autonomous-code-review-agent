@@ -11,7 +11,7 @@ client = TestClient(main.app)
 def test_review_endpoint_returns_mock_findings() -> None:
     response = client.post(
         "/api/reviews",
-        json={"source": "print('hello')", "mode": "mock"},
+        json={"source": "value = eval(user_input)", "mode": "mock"},
     )
 
     assert response.status_code == 200
@@ -19,6 +19,7 @@ def test_review_endpoint_returns_mock_findings() -> None:
     assert body["language"] == "python"
     assert body["mode"] == "mock"
     assert len(body["findings"]) == 1
+    assert body["findings"][0]["title"] == "Dynamic evaluation with eval"
 
 
 def test_review_endpoint_returns_demo_findings() -> None:
@@ -29,6 +30,7 @@ def test_review_endpoint_returns_demo_findings() -> None:
 
     assert response.status_code == 200
     assert response.json()["mode"] == "demo"
+    assert response.json()["findings"] == []
 
 
 def test_review_endpoint_rejects_invalid_request() -> None:

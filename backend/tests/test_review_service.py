@@ -10,16 +10,45 @@ from app.review_service import (
 from app.schemas import ReviewRequest
 
 
-def test_mock_provider_returns_deterministic_demo_findings() -> None:
-    service = ReviewService({ReviewRequest(source="print('hello')").mode: MockReviewProvider()})
+def test_mock_provider_returns_deterministic_static_findings() -> None:
+    service = ReviewService({"mock": MockReviewProvider()})
+    request = ReviewRequest(source="value = eval(user_input)\n")
 
-    first_response = service.review(ReviewRequest(source="print('hello')"))
-    second_response = service.review(ReviewRequest(source="different = True"))
+    first_response = service.review(request)
+    second_response = service.review(request)
 
     assert first_response == second_response
     assert first_response.mode == "mock"
     assert len(first_response.findings) == 1
-    assert first_response.findings[0].severity == "info"
+    assert first_response.findings[0].title == "Dynamic evaluation with eval"
+    assert first_response.findings[0].line_start == 1
+
+
+def test_mock_provider_returns_no_findings_for_clean_source() -> None:
+    service = ReviewService({"mock": MockReviewProvider()})
+
+    response = service.review(ReviewRequest(source="value = 1\n"))
+
+    assert response.findings == []
+
+
+def test_mock_provider_returns_multiple_static_findings() -> None:
+    service = ReviewService({"demo": MockReviewProvider()})
+    request = ReviewRequest(
+        source="value = eval(user_input)\n"
+        "def collect(items=[]):\n"
+        "    return items\n",
+        mode="demo",
+    )
+
+    response = service.review(request)
+
+    assert response.mode == "demo"
+    assert [finding.title for finding in response.findings] == [
+        "Dynamic evaluation with eval",
+        "Mutable list used as a default argument",
+    ]
+    assert [finding.line_start for finding in response.findings] == [1, 2]
 
 
 class RecordingProvider:

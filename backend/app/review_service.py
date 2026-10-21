@@ -8,7 +8,8 @@ from typing import Protocol, runtime_checkable
 
 from pydantic import ValidationError
 
-from app.schemas import ReviewFinding, ReviewRequest, ReviewResponse
+from app.schemas import ReviewRequest, ReviewResponse
+from app.static_checks import analyze_source
 
 
 class ReviewServiceError(Exception):
@@ -28,23 +29,13 @@ class ReviewProvider(Protocol):
 
 
 class MockReviewProvider:
-    """Return deterministic sample data without using a network or API key."""
+    """Return deterministic local static-check results without network access."""
 
     def review(self, request: ReviewRequest) -> ReviewResponse:
         return ReviewResponse(
             language="python",
             mode=request.mode,
-            findings=[
-                ReviewFinding(
-                    severity="info",
-                    title="Demo finding: review input handling",
-                    explanation=(
-                        "This is deterministic mock data, not an analysis of the "
-                        "submitted source."
-                    ),
-                    suggested_fix="Use this result only to test the review flow.",
-                )
-            ],
+            findings=analyze_source(request.source),
         )
 
 

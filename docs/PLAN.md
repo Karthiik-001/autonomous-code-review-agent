@@ -1,7 +1,7 @@
 # Implementation Plan
 
 This plan is intentionally small, ordered, and testable. Status values are `not
-started`, `in progress`, and `done`. No application implementation has begun.
+started`, `in progress`, and `done`.
 
 ## Phase 0: Confirm scope and boundaries
 
@@ -14,7 +14,7 @@ started`, `in progress`, and `done`. No application implementation has begun.
    - Never execute, import, compile, or shell out with submitted code.
    - Replaceable AI provider and clearly labelled mock/demo mode.
 
-2. **Resolve remaining product constraints** — **in progress**
+2. **Resolve remaining product constraints** — **done**
    - Defer AI provider selection until the AI integration milestone.
    - Review API cost and data-use terms before calling a real provider.
    - Use a configurable 50 KB maximum per submitted source file initially.
@@ -27,70 +27,68 @@ started`, `in progress`, and `done`. No application implementation has begun.
    - Add separate frontend and backend directories.
    - Add Git-safe ignore rules for dependencies, builds, and secrets.
    - Add concise development commands to the README.
-   - Test: repository setup does not contain secrets or generated artifacts.
 
-4. **Build the React/Vite shell** — **not started**
-   - Add the Python source editor, small `.py` upload control, submit state, and
+4. **Build the React/Vite shell** — **done**
+   - Python source editor, small `.py` upload control, submit state, and
      clearly labelled mock/demo mode.
-   - Add plain CSS for readable, accessible states.
-   - Test: frontend builds and displays validation, loading, success, and error
-     states with fixture responses.
+   - Plain CSS for readable, accessible states.
+   - Loading, error, success, and empty-result states.
+   - Finding cards with severity badge, line number, explanation, suggested fix,
+     and confidence.
 
 5. **Create the FastAPI shell** — **done**
-   - Add a health endpoint and the review route placeholder.
-   - Keep provider configuration on the backend.
-   - Test: pytest can start the app and call the health endpoint.
+   - Health endpoint (`GET /health`) and review route (`POST /api/reviews`).
+   - Provider configuration kept on the backend.
+   - pytest can start the app and call the health endpoint.
 
 ## Phase 2: Define and validate the review contract
 
 6. **Define Pydantic request and response schemas** — **done**
-   - Model Python source input, review mode, and structured findings.
-   - Validate severity, title, explanation, optional line numbers, suggested fixes,
-     and optional confidence.
-   - Enforce language, filename, and maximum-size rules.
-   - Test: valid fixtures pass and malformed, oversized, and unsupported requests
-     fail.
+   - `ReviewRequest`: source, filename, language, mode with all validations.
+   - `ReviewFinding`: severity, title, explanation, line numbers, suggested fix,
+     confidence.
+   - `ReviewResponse`: language, mode, findings list.
+   - Valid fixtures pass; malformed, oversized, and unsupported requests fail.
 
 7. **Implement the review service boundary** — **done**
-   - Keep provider logic separate from routes and UI.
-   - Add the deterministic mock/demo adapter.
-   - Add an interface for the unresolved AI provider.
-   - Ensure malformed provider results fail visibly.
-   - Test: service tests run without network access or an API key.
+   - `ReviewService` selects a provider, validates its output, and raises
+     `ReviewServiceError` for failures.
+   - `MockReviewProvider` delegates to `analyze_source()`.
+   - `ReviewProvider` Protocol describes the adapter boundary.
+   - Service tests run without network access or an API key.
 
 ## Phase 3: Connect analysis
 
-8. **Add the selected AI provider adapter** — **not started**
-   - Keep credentials server-side.
-   - Confirm cost and data-use decisions before enabling it.
-   - Use bounded prompts, timeouts, and explicit error handling.
-   - Instruct the provider to treat submitted code as data and return the schema.
-   - Test: provider calls are isolated behind the interface and malformed results
-     produce visible errors.
+8. **Implement the deterministic static checker** — **done**
+   - `analyze_source()` in `backend/app/static_checks.py`.
+   - Token-based detection of nine risk patterns (see README).
+   - Handles malformed source, tokenization errors, multiline signatures, and
+     explicit line continuation.
+   - 11 focused unit tests, all passing.
 
-9. **Connect the review endpoint and frontend** — **done**
-   - Support pasted Python and one-file upload paths.
-   - Return stable success and error responses.
-   - Show whether results came from mock/demo mode or AI review.
-   - Verify that no execution path exists.
-   - Test: a fixture submitted through the route returns the expected structured
-     response.
+9. **Connect the static checker to the review service** — **done**
+   - `MockReviewProvider.review()` calls `analyze_source(request.source)`.
+   - Service-level and HTTP-level tests verify real findings flow end to end.
+   - Clean code returns an empty findings list.
+   - 34 backend tests passing.
+
+10. **Add the AI provider adapter** — **not started**
+    - Keep credentials server-side.
+    - Confirm cost and data-use decisions before enabling it.
+    - Use bounded prompts, timeouts, and explicit error handling.
+    - Instruct the provider to treat submitted code as data.
+    - Planned first candidate: Ollama with a small quantized local model.
 
 ## Phase 4: Verify and document
 
-10. **Add backend security and behavior tests** — **not started**
-    - Test successful mock review, validation errors, provider errors, malformed
-      output, oversized input, and no-execution behavior with pytest.
-    - Confirm source text is not logged by default and secrets are not returned.
+11. **Update setup and usage documentation** — **done**
+    - README updated with actual implementation status, setup instructions,
+      checker reference table, architecture diagram, and limitations.
+    - PLAN.md updated to reflect current milestone completion.
 
-11. **Add frontend verification** — **not started**
+12. **Add frontend verification** — **not started**
     - Test request states, mode labels, safe display of findings, and user-facing
       errors using frontend fixtures and the chosen React test approach.
-
-12. **Improve setup and usage documentation** — **not started**
-    - Document installation, environment configuration, provider setup, mock/demo
-      mode, limitations, and the fact that findings are suggestions rather than
-      guarantees.
 
 13. **Review the first version against requirements** — **not started**
     - Run pytest and the selected frontend checks.
