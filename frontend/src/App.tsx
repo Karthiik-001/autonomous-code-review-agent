@@ -103,19 +103,19 @@ function App() {
   return (
     <main className="page-shell">
       <section className="hero">
-        <p className="eyebrow">LOCAL LEARNING PROJECT</p>
+        <p className="eyebrow">PORTFOLIO PROJECT</p>
         <h1>Python Review Assistant</h1>
         <p className="intro">
-          Submit a small Python file to explore structured review feedback. This
-          first interface uses predictable demo data and never runs your code.
+          Submit Python code or a <code>.py</code> file to receive structured code-review feedback.
+          This tool performs deterministic, rule-based static analysis and never executes your code.
         </p>
       </section>
 
       <section className="mode-banner" aria-label="Review mode">
         <span className="mode-dot" aria-hidden="true" />
         <div>
-          <strong>Mock/demo mode</strong>
-          <p>Sample findings are not real AI analysis and are not proof that code is safe.</p>
+          <strong>Static Python Analysis</strong>
+          <p>Deterministic, token-based checks for common security and code-quality hazards.</p>
         </div>
       </section>
 
@@ -169,7 +169,7 @@ function App() {
       )}
       {status === "loading" && (
         <div className="status-message loading-message" role="status">
-          Sending source to the local mock/demo review service...
+          Analyzing source with local static checks...
         </div>
       )}
 
@@ -181,12 +181,11 @@ function App() {
               <h2>Possible issues to think about</h2>
             </div>
             <span className="result-mode">
-              {response.mode === "mock" || response.mode === "demo" ? "Mock/demo" : "AI"} ·{" "}
-              {response.language}
+              Static Analysis · {response.language}
             </span>
           </div>
           <p className="results-note">
-            These suggestions are heuristic examples, not guaranteed bug or security detection.
+            Identified via static token analysis. These rule-based findings highlight common security and quality hazards.
           </p>
           <div className="finding-list">
             {response.findings.length > 0 ? (
@@ -194,7 +193,7 @@ function App() {
                 <FindingCard key={`${finding.title}-${index}`} finding={finding} />
               ))
             ) : (
-              <p className="empty-results">No findings in this demo response. That does not prove the code is safe.</p>
+              <p className="empty-results">No issues detected by static rules. That does not prove the code is safe.</p>
             )}
           </div>
         </section>
