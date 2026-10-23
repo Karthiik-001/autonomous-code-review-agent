@@ -46,6 +46,15 @@ The application returns a finding like:
 | Suggested fix | Avoid eval; parse input as data or use an explicit allowlist. |
 | Confidence | 98% |
 
+## Portfolio preview
+
+![Python Review Assistant showing a deterministic security finding](frontend/public/review-results.png)
+
+The screenshot shows the complete local flow: Python source is submitted in the
+browser, the FastAPI backend analyzes it as text, and the frontend renders a
+structured finding with severity, location, explanation, suggested next step,
+and confidence.
+
 ## What the static checker detects
 
 | Pattern | Severity |
@@ -100,6 +109,17 @@ cd backend
 python -m pytest tests/ -v
 ```
 
+### Run the frontend tests and production build
+
+```text
+cd frontend
+npm test
+npm run build
+```
+
+The frontend development server proxies `/api` requests to the backend at
+`http://127.0.0.1:8000`. Start both servers before submitting a review.
+
 ## Architecture
 
 ```text
@@ -133,7 +153,7 @@ submitted source.
 | Frontend | React 18, TypeScript, Vite, plain CSS |
 | Backend | Python 3.12+, FastAPI, Pydantic, Uvicorn |
 | Static analysis | Python `tokenize` (stdlib only) |
-| Tests | pytest |
+| Tests | pytest, Vitest |
 | Version control | Git, GitHub |
 
 ## Safety notes

@@ -267,9 +267,25 @@ h2 {
   text-transform: uppercase;
 }
 
+.severity-critical,
+.severity-high {
+  background: #ffe3df;
+  color: #9b2f24;
+}
+
 .severity-medium {
   background: #fff2c9;
   color: #865f00;
+}
+
+.severity-low {
+  background: #e1efff;
+  color: #245b91;
+}
+
+.severity-info {
+  background: #e9edf0;
+  color: #53636d;
 }
 
 .suggested-fix {
